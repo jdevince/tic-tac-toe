@@ -11,7 +11,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 import time
 import numpy as numpy
 
-from Models.TicTacToeBoard import TicTacToeBoard
+from Models.TicTacToeBoard import TicTacToeBoard, CellState
 import Services.DecisionService as DecisionService
 
 url = 'https://www.mathsisfun.com/games/tic-tac-toe.html'
@@ -23,18 +23,15 @@ def play():
     initialSetup()
     board = TicTacToeBoard()
 
-    time.sleep(2)
-    actions.move_to_element_with_offset(driver.find_element_by_xpath('//*[@id="board"]/div[1]'), 35, 35)
-    actions.click()
-    actions.perform()
-    time.sleep(10)
-
-    updateBoardStatus(board)
-    # while gameOver == False:
-        # updateBoardStatus(board)
-        #gameOver = doNextMove(board)
-
-    #cleanup()
+    gameOver = False
+    while gameOver == False:
+        updateBoardStatus(board)
+        doMove(board)
+        updateBoardStatus(board)
+        gameOver = board.isGameOver()
+    
+    time.sleep(5)
+    cleanup()
 
 def initialSetup():
     driver.get(url)
@@ -64,41 +61,15 @@ def updateBoardStatus(board):
 
     ocrConfig = r'--psm 10 -c tessedit_char_whitelist=OX'
 
-    cellOne = fullImage.crop(getCellCoordinates(1))
-    cellOne = updateImageForOCR(cellOne)
-    print(pytesseract.image_to_string(cellOne, config=ocrConfig))
+    for cellIndex in range(9):
+        cellImage = fullImage.crop(getCellCoordinates(cellIndex))
+        cellImage = updateImageForOCR(cellImage)
+        cellCharacter = pytesseract.image_to_string(cellImage, config=ocrConfig)
 
-    cellTwo = fullImage.crop(getCellCoordinates(2))
-    cellTwo = updateImageForOCR(cellTwo)
-    print(pytesseract.image_to_string(cellTwo, config=ocrConfig))
-
-    cellThree = fullImage.crop(getCellCoordinates(3))
-    cellThree = updateImageForOCR(cellThree)
-    print(pytesseract.image_to_string(cellThree, config=ocrConfig))
-
-    cellFour = fullImage.crop(getCellCoordinates(4))
-    cellFour = updateImageForOCR(cellFour)
-    print(pytesseract.image_to_string(cellFour, config=ocrConfig))
-
-    cellFive = fullImage.crop(getCellCoordinates(5))
-    cellFive = updateImageForOCR(cellFive)
-    print(pytesseract.image_to_string(cellFive, config=ocrConfig))
-
-    cellSix = fullImage.crop(getCellCoordinates(6))
-    cellSix = updateImageForOCR(cellSix)
-    print(pytesseract.image_to_string(cellSix, config=ocrConfig))
-
-    cellSeven = fullImage.crop(getCellCoordinates(7))
-    cellSeven = updateImageForOCR(cellSeven)
-    print(pytesseract.image_to_string(cellSeven, config=ocrConfig))
-
-    cellEight = fullImage.crop(getCellCoordinates(8))
-    cellEight = updateImageForOCR(cellEight)
-    print(pytesseract.image_to_string(cellEight, config=ocrConfig))
-
-    cellNine = fullImage.crop(getCellCoordinates(9))
-    cellNine = updateImageForOCR(cellNine)
-    print(pytesseract.image_to_string(cellNine, config=ocrConfig))
+        if (cellCharacter == 'O'):
+            board.cells[cellIndex] = CellState.Ours
+        elif (cellCharacter == 'X'):
+            board.cells[cellIndex] = CellState.Opponent
 
 def getCellCoordinates(cell):
     # Result in format (startX, startY, endX, endY)
@@ -107,23 +78,23 @@ def getCellCoordinates(cell):
     cellSize = 60
     buffer = 10
 
-    if cell == 1:
+    if cell == 0:
         result = (topLeftX + (0 * (cellSize + buffer)), topLeftY + (0 * (cellSize + buffer)), topLeftX + (1 * (cellSize + buffer)) - buffer, topLeftY + (1 * (cellSize + buffer)) - buffer)
-    elif cell == 2:
+    elif cell == 1:
         result = (topLeftX + (1 * (cellSize + buffer)), topLeftY + (0 * (cellSize + buffer)), topLeftX + (2 * (cellSize + buffer)) - buffer, topLeftY + (1 * (cellSize + buffer)) - buffer)
-    elif cell == 3:
+    elif cell == 2:
         result = (topLeftX + (2 * (cellSize + buffer)), topLeftY + (0 * (cellSize + buffer)), topLeftX + (3 * (cellSize + buffer)) - buffer, topLeftY + (1 * (cellSize + buffer)) - buffer)
-    elif cell == 4:
+    elif cell == 3:
         result = (topLeftX + (0 * (cellSize + buffer)), topLeftY + (1 * (cellSize + buffer)), topLeftX + (1 * (cellSize + buffer)) - buffer, topLeftY + (2 * (cellSize + buffer)) - buffer)
-    elif cell == 5:
+    elif cell == 4:
         result = (topLeftX + (1 * (cellSize + buffer)), topLeftY + (1 * (cellSize + buffer)), topLeftX + (2 * (cellSize + buffer)) - buffer, topLeftY + (2 * (cellSize + buffer)) - buffer)
-    elif cell == 6:
+    elif cell == 5:
         result = (topLeftX + (2 * (cellSize + buffer)), topLeftY + (1 * (cellSize + buffer)), topLeftX + (3 * (cellSize + buffer)) - buffer, topLeftY + (2 * (cellSize + buffer)) - buffer)
-    elif cell == 7:
+    elif cell == 6:
         result = (topLeftX + (0 * (cellSize + buffer)), topLeftY + (2 * (cellSize + buffer)), topLeftX + (1 * (cellSize + buffer)) - buffer, topLeftY + (3 * (cellSize + buffer)) - buffer)
-    elif cell == 8:
+    elif cell == 7:
         result = (topLeftX + (1 * (cellSize + buffer)), topLeftY + (2 * (cellSize + buffer)), topLeftX + (2 * (cellSize + buffer)) - buffer, topLeftY + (3 * (cellSize + buffer)) - buffer)
-    elif cell == 9:
+    elif cell == 8:
         result = (topLeftX + (2 * (cellSize + buffer)), topLeftY + (2 * (cellSize + buffer)), topLeftX + (3 * (cellSize + buffer)) - buffer, topLeftY + (3 * (cellSize + buffer)) - buffer)
 
     return result
@@ -143,11 +114,9 @@ def updateImageForOCR(image):
 
     return updatedImage
 
-# def getMiddleOfCell(cell):
-#     coordinates = getCellCoordinates(cell)
-#     result = ( (coordinates[0] + coordinates[2]) / 2, (coordinates[1] + coordinates[3]) / 2 )
-#     return result
+def doMove(board):
+   nextMoveCellIndex = DecisionService.getNextMove(board)
 
-#def doNextMove(board):
-#    nextMoveCell = DecisionService.getNextMove(board)
+   xpath = '//*[@id="board"]/div[' + str(nextMoveCellIndex + 1) + ']'
+   actions.move_to_element_with_offset(driver.find_element_by_xpath(xpath), 35, 35).click().perform()
     
